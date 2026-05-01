@@ -8,6 +8,7 @@ namespace Jint.Native.Math;
 [JsObject]
 internal sealed partial class MathInstance : ObjectInstance
 {
+    private readonly Realm _realm;
     private Random? _random;
 
     [JsProperty(Name = "E", Flags = PropertyFlag.AllForbidden)] private static readonly JsNumber EValue = new(System.Math.E);
@@ -21,8 +22,9 @@ internal sealed partial class MathInstance : ObjectInstance
 
     [JsSymbol("ToStringTag", Flags = PropertyFlag.Configurable)] private static readonly JsString MathToStringTag = new("Math");
 
-    internal MathInstance(Engine engine, ObjectPrototype objectPrototype) : base(engine)
+    internal MathInstance(Engine engine, Realm realm, ObjectPrototype objectPrototype) : base(engine)
     {
+        _realm = realm;
         _prototype = objectPrototype;
     }
 
@@ -543,16 +545,24 @@ internal sealed partial class MathInstance : ObjectInstance
     /// https://tc39.es/ecma262/#sec-math.max
     /// </summary>
     [JsFunction(Length = 2)]
-    private static JsValue Max(JsValue thisObject, JsCallArguments arguments)
+    private static JsValue Max(JsValue thisObject, [Rest] ReadOnlySpan<JsValue> values)
     {
-        if (arguments.Length == 0)
+        if (values.Length == 0)
         {
             return JsNumber.DoubleNegativeInfinity;
         }
 
-        var highest = double.NegativeInfinity;
-        foreach (var number in Coerced(arguments))
+        // Spec requires ToNumber on every element before scanning (observable via valueOf).
+        Span<double> coerced = values.Length <= 16 ? stackalloc double[values.Length] : new double[values.Length];
+        for (var i = 0; i < values.Length; i++)
         {
+            coerced[i] = TypeConverter.ToNumber(values[i]);
+        }
+
+        var highest = double.NegativeInfinity;
+        for (var i = 0; i < coerced.Length; i++)
+        {
+            var number = coerced[i];
             if (double.IsNaN(number))
             {
                 return JsNumber.DoubleNaN;
@@ -576,16 +586,24 @@ internal sealed partial class MathInstance : ObjectInstance
     /// https://tc39.es/ecma262/#sec-math.min
     /// </summary>
     [JsFunction(Length = 2)]
-    private static JsValue Min(JsValue thisObject, JsCallArguments arguments)
+    private static JsValue Min(JsValue thisObject, [Rest] ReadOnlySpan<JsValue> values)
     {
-        if (arguments.Length == 0)
+        if (values.Length == 0)
         {
             return JsNumber.DoublePositiveInfinity;
         }
 
-        var lowest = double.PositiveInfinity;
-        foreach (var number in Coerced(arguments))
+        // Spec requires ToNumber on every element before scanning (observable via valueOf).
+        Span<double> coerced = values.Length <= 16 ? stackalloc double[values.Length] : new double[values.Length];
+        for (var i = 0; i < values.Length; i++)
         {
+            coerced[i] = TypeConverter.ToNumber(values[i]);
+        }
+
+        var lowest = double.PositiveInfinity;
+        for (var i = 0; i < coerced.Length; i++)
+        {
+            var number = coerced[i];
             if (double.IsNaN(number))
             {
                 return JsNumber.DoubleNaN;
@@ -967,13 +985,19 @@ internal sealed partial class MathInstance : ObjectInstance
     /// https://tc39.es/ecma262/#sec-math.hypot
     /// </summary>
     [JsFunction(Length = 2)]
-    private static JsValue Hypot(JsValue thisObject, JsCallArguments arguments)
+    private static JsValue Hypot(JsValue thisObject, [Rest] ReadOnlySpan<JsValue> values)
     {
-        var coerced = Coerced(arguments);
-
-        foreach (var number in coerced)
+        // Spec requires ToNumber on every element before scanning. Any Infinity returns +Infinity
+        // (even if a later value is NaN); otherwise NaN; otherwise sum-of-squares root.
+        Span<double> coerced = values.Length <= 16 ? stackalloc double[values.Length] : new double[values.Length];
+        for (var i = 0; i < values.Length; i++)
         {
-            if (double.IsInfinity(number))
+            coerced[i] = TypeConverter.ToNumber(values[i]);
+        }
+
+        for (var i = 0; i < coerced.Length; i++)
+        {
+            if (double.IsInfinity(coerced[i]))
             {
                 return JsNumber.DoublePositiveInfinity;
             }
@@ -981,8 +1005,9 @@ internal sealed partial class MathInstance : ObjectInstance
 
         var onlyZero = true;
         double y = 0;
-        foreach (var number in coerced)
+        for (var i = 0; i < coerced.Length; i++)
         {
+            var number = coerced[i];
             if (double.IsNaN(number))
             {
                 return JsNumber.DoubleNaN;
@@ -1013,10 +1038,10 @@ internal sealed partial class MathInstance : ObjectInstance
         var items = arguments.At(0);
         if (items.IsNullOrUndefined())
         {
-            Throw.TypeError(_engine.Realm);
+            Throw.TypeError(_realm);
         }
 
-        var iteratorRecord = items.GetIterator(_engine.Realm);
+        var iteratorRecord = items.GetIterator(_realm);
         var state = JsNumber.NegativeZero._value;
         List<double> sum = [];
         long count = 0;
@@ -1029,12 +1054,12 @@ internal sealed partial class MathInstance : ObjectInstance
                 count++;
                 if (count > 9007199254740992)
                 {
-                    Throw.RangeError(_engine.Realm);
+                    Throw.RangeError(_realm);
                 }
 
                 if (value is not JsNumber jsNumber)
                 {
-                    Throw.TypeError(_engine.Realm, "Input is not a number: " + next);
+                    Throw.TypeError(_realm, "Input is not a number: " + next);
                     return default;
                 }
 
@@ -1093,19 +1118,6 @@ internal sealed partial class MathInstance : ObjectInstance
         }
 
         return Math.SumPrecise.Sum(sum);
-    }
-
-    private static double[] Coerced(JsCallArguments arguments)
-    {
-        // TODO stackalloc
-        var coerced = new double[arguments.Length];
-        for (var i = 0; i < arguments.Length; i++)
-        {
-            var argument = arguments[i];
-            coerced[i] = TypeConverter.ToNumber(argument);
-        }
-
-        return coerced;
     }
 
     [JsFunction(Length = 2)]

@@ -88,15 +88,18 @@ internal static class Emitter
         sb.AppendLine("    private void CreateProperties_Generated()");
         sb.AppendLine("    {");
 
-        if (totalEntries == 0)
+        if (totalEntries == 0 && obj.ExtraCapacity == 0)
         {
             sb.AppendLine("        // no [JsFunction] / [JsProperty] / [JsAccessor] / [JsThrowerAccessor] members");
             sb.AppendLine("    }");
             return;
         }
 
+        // [JsObject(ExtraCapacity=N)] presizes the dictionary for post-CreateProperties_Generated
+        // SetProperty calls (e.g. cross-realm constructor refs in IntlInstance/TemporalInstance) so
+        // the dictionary doesn't grow + transition list→hash during init.
         sb.Append("        var properties = new global::Jint.Collections.HybridDictionary<global::Jint.Runtime.Descriptors.PropertyDescriptor>(")
-          .Append(totalEntries)
+          .Append(totalEntries + obj.ExtraCapacity)
           .AppendLine(", checkExistingKeys: false);");
 
         foreach (var prop in obj.Properties)
@@ -115,16 +118,19 @@ internal static class Emitter
               .Append(obj.Name).Append("Function.Slot.").Append(fn.ClrName).Append("), ").Append(fn.FlagsExpression).AppendLine(");");
         }
 
-        // Accessors: GetSetPropertyDescriptor wrapping eagerly-allocated dispatcher slots.
+        // Accessors: LazyGetSetPropertyDescriptor — dispatcher Functions allocate on first read,
+        // so prototypes with many never-read accessors (Temporal date/time has 10-20 each) skip the
+        // up-front allocations. The shape mirrors the data-property [JsFunction] emission above.
         var accessorNames = new List<string>(accessorsByName.Keys);
         accessorNames.Sort(StringComparer.Ordinal);
         foreach (var name in accessorNames)
         {
             var (getFn, setFn, flagsExpr) = accessorsByName[name];
-            sb.Append("        properties[\"").Append(EscapeStringLit(name)).Append("\"] = new global::Jint.Runtime.Descriptors.GetSetPropertyDescriptor(");
+            sb.Append("        properties[\"").Append(EscapeStringLit(name)).Append("\"] = new global::Jint.Runtime.Descriptors.Specialized.LazyGetSetPropertyDescriptor<")
+              .Append(obj.Name).Append(">(this, ");
             if (getFn is not null)
             {
-                sb.Append("new __").Append(obj.Name).Append("Function(this, __").Append(obj.Name).Append("Function.Slot.").Append(getFn.ClrName).Append(')');
+                sb.Append("static host => new __").Append(obj.Name).Append("Function(host, __").Append(obj.Name).Append("Function.Slot.").Append(getFn.ClrName).Append(')');
             }
             else
             {
@@ -133,7 +139,7 @@ internal static class Emitter
             sb.Append(", ");
             if (setFn is not null)
             {
-                sb.Append("new __").Append(obj.Name).Append("Function(this, __").Append(obj.Name).Append("Function.Slot.").Append(setFn.ClrName).Append(')');
+                sb.Append("static host => new __").Append(obj.Name).Append("Function(host, __").Append(obj.Name).Append("Function.Slot.").Append(setFn.ClrName).Append(')');
             }
             else
             {
@@ -176,12 +182,16 @@ internal static class Emitter
         sb.AppendLine("        private readonly Slot _slot;");
         sb.AppendLine();
 
+        // Use host._realm — the realm captured at host construction time (= host's home realm) — not
+        // host.Engine.Realm, which is the *currently active* realm. Lazy descriptors materialize on
+        // first read; if first access is cross-realm (e.g. via ShadowRealm), Engine.Realm would be the
+        // wrong realm and the dispatcher Function would carry the wrong [[Realm]] internal slot.
         sb.Append("        internal ").Append(typeName).Append("(").Append(obj.Name).AppendLine(" host, Slot slot)");
-        sb.AppendLine("            : base(host.Engine, host.Engine.Realm, GetName(slot))");
+        sb.AppendLine("            : base(host.Engine, host._realm, GetName(slot))");
         sb.AppendLine("        {");
         sb.AppendLine("            _host = host;");
         sb.AppendLine("            _slot = slot;");
-        sb.AppendLine("            _prototype = host.Engine.Realm.Intrinsics.Function.PrototypeObject;");
+        sb.AppendLine("            _prototype = host._realm.Intrinsics.Function.PrototypeObject;");
         sb.AppendLine("            _length = new global::Jint.Runtime.Descriptors.PropertyDescriptor(global::Jint.Native.JsNumber.Create(GetLength(slot)), global::Jint.Runtime.Descriptors.PropertyFlag.Configurable);");
         sb.AppendLine("        }");
         sb.AppendLine();
@@ -384,17 +394,18 @@ internal static class Emitter
               .Append(obj.Name).Append("Function.Slot.").Append(fn.ClrName).Append("), ").Append(fn.FlagsExpression).AppendLine(");");
         }
 
-        // Symbol-keyed accessors: GetSetPropertyDescriptor wrapping eagerly-allocated dispatcher slots,
-        // registered under GlobalSymbolRegistry.<SymbolName>.
+        // Symbol-keyed accessors: LazyGetSetPropertyDescriptor — dispatcher Functions allocate on
+        // first read, registered under GlobalSymbolRegistry.<SymbolName>.
         var symbolAccessorNames = new List<string>(symbolAccessorsByName.Keys);
         symbolAccessorNames.Sort(StringComparer.Ordinal);
         foreach (var name in symbolAccessorNames)
         {
             var (getFn, setFn, flagsExpr) = symbolAccessorsByName[name];
-            sb.Append("        symbols[global::Jint.Native.Symbol.GlobalSymbolRegistry.").Append(name).Append("] = new global::Jint.Runtime.Descriptors.GetSetPropertyDescriptor(");
+            sb.Append("        symbols[global::Jint.Native.Symbol.GlobalSymbolRegistry.").Append(name).Append("] = new global::Jint.Runtime.Descriptors.Specialized.LazyGetSetPropertyDescriptor<")
+              .Append(obj.Name).Append(">(this, ");
             if (getFn is not null)
             {
-                sb.Append("new __").Append(obj.Name).Append("Function(this, __").Append(obj.Name).Append("Function.Slot.").Append(getFn.ClrName).Append(')');
+                sb.Append("static host => new __").Append(obj.Name).Append("Function(host, __").Append(obj.Name).Append("Function.Slot.").Append(getFn.ClrName).Append(')');
             }
             else
             {
@@ -403,7 +414,7 @@ internal static class Emitter
             sb.Append(", ");
             if (setFn is not null)
             {
-                sb.Append("new __").Append(obj.Name).Append("Function(this, __").Append(obj.Name).Append("Function.Slot.").Append(setFn.ClrName).Append(')');
+                sb.Append("static host => new __").Append(obj.Name).Append("Function(host, __").Append(obj.Name).Append("Function.Slot.").Append(setFn.ClrName).Append(')');
             }
             else
             {

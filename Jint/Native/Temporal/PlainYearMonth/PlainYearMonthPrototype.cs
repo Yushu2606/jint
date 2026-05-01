@@ -9,9 +9,13 @@ namespace Jint.Native.Temporal;
 /// <summary>
 /// https://tc39.es/proposal-temporal/#sec-properties-of-the-temporal-plainyearmonth-prototype-object
 /// </summary>
-internal sealed class PlainYearMonthPrototype : Prototype
+[JsObject]
+internal sealed partial class PlainYearMonthPrototype : Prototype
 {
+    [JsProperty(Name = "constructor", Flags = PropertyFlag.NonEnumerable)]
     private readonly PlainYearMonthConstructor _constructor;
+
+    [JsSymbol("ToStringTag", Flags = PropertyFlag.Configurable)] private static readonly JsString PlainYearMonthToStringTag = new("Temporal.PlainYearMonth");
 
     internal PlainYearMonthPrototype(
         Engine engine,
@@ -25,42 +29,10 @@ internal sealed class PlainYearMonthPrototype : Prototype
 
     protected override void Initialize()
     {
-        const PropertyFlag PropertyFlags = PropertyFlag.Writable | PropertyFlag.Configurable;
-        const PropertyFlag LengthFlags = PropertyFlag.Configurable;
-
-        var properties = new PropertyDictionary(22, checkExistingKeys: false)
-        {
-            ["constructor"] = new PropertyDescriptor(_constructor, PropertyFlag.NonEnumerable),
-            ["with"] = new(new ClrFunction(Engine, "with", With, 1, LengthFlags), PropertyFlags),
-            ["add"] = new(new ClrFunction(Engine, "add", Add, 1, LengthFlags), PropertyFlags),
-            ["subtract"] = new(new ClrFunction(Engine, "subtract", Subtract, 1, LengthFlags), PropertyFlags),
-            ["until"] = new(new ClrFunction(Engine, "until", Until, 1, LengthFlags), PropertyFlags),
-            ["since"] = new(new ClrFunction(Engine, "since", Since, 1, LengthFlags), PropertyFlags),
-            ["equals"] = new(new ClrFunction(Engine, "equals", Equals, 1, LengthFlags), PropertyFlags),
-            ["toString"] = new(new ClrFunction(Engine, "toString", ToTemporalString, 0, LengthFlags), PropertyFlags),
-            ["toJSON"] = new(new ClrFunction(Engine, "toJSON", ToJSON, 0, LengthFlags), PropertyFlags),
-            ["toLocaleString"] = new(new ClrFunction(Engine, "toLocaleString", ToLocaleString, 0, LengthFlags), PropertyFlags),
-            ["valueOf"] = new(new ClrFunction(Engine, "valueOf", ValueOf, 0, LengthFlags), PropertyFlags),
-            ["toPlainDate"] = new(new ClrFunction(Engine, "toPlainDate", ToPlainDate, 1, LengthFlags), PropertyFlags),
-            ["calendarId"] = new GetSetPropertyDescriptor(new ClrFunction(Engine, "get calendarId", GetCalendarId, 0, PropertyFlag.Configurable), Undefined, PropertyFlag.Configurable),
-            ["year"] = new GetSetPropertyDescriptor(new ClrFunction(Engine, "get year", GetYear, 0, PropertyFlag.Configurable), Undefined, PropertyFlag.Configurable),
-            ["month"] = new GetSetPropertyDescriptor(new ClrFunction(Engine, "get month", GetMonth, 0, PropertyFlag.Configurable), Undefined, PropertyFlag.Configurable),
-            ["monthCode"] = new GetSetPropertyDescriptor(new ClrFunction(Engine, "get monthCode", GetMonthCode, 0, PropertyFlag.Configurable), Undefined, PropertyFlag.Configurable),
-            ["daysInMonth"] = new GetSetPropertyDescriptor(new ClrFunction(Engine, "get daysInMonth", GetDaysInMonth, 0, PropertyFlag.Configurable), Undefined, PropertyFlag.Configurable),
-            ["daysInYear"] = new GetSetPropertyDescriptor(new ClrFunction(Engine, "get daysInYear", GetDaysInYear, 0, PropertyFlag.Configurable), Undefined, PropertyFlag.Configurable),
-            ["monthsInYear"] = new GetSetPropertyDescriptor(new ClrFunction(Engine, "get monthsInYear", GetMonthsInYear, 0, PropertyFlag.Configurable), Undefined, PropertyFlag.Configurable),
-            ["inLeapYear"] = new GetSetPropertyDescriptor(new ClrFunction(Engine, "get inLeapYear", GetInLeapYear, 0, PropertyFlag.Configurable), Undefined, PropertyFlag.Configurable),
-            ["eraYear"] = new GetSetPropertyDescriptor(new ClrFunction(Engine, "get eraYear", GetEraYear, 0, PropertyFlag.Configurable), Undefined, PropertyFlag.Configurable),
-            ["era"] = new GetSetPropertyDescriptor(new ClrFunction(Engine, "get era", GetEra, 0, PropertyFlag.Configurable), Undefined, PropertyFlag.Configurable),
-        };
-        SetProperties(properties);
-
-        var symbols = new SymbolDictionary(1)
-        {
-            [GlobalSymbolRegistry.ToStringTag] = new("Temporal.PlainYearMonth", PropertyFlag.Configurable)
-        };
-        SetSymbols(symbols);
+        CreateProperties_Generated();
+        CreateSymbols_Generated();
     }
+
 
     private JsPlainYearMonth ValidatePlainYearMonth(JsValue thisObject)
     {
@@ -71,49 +43,59 @@ internal sealed class PlainYearMonthPrototype : Prototype
     }
 
     // Getters
-    private JsString GetCalendarId(JsValue thisObject, JsCallArguments arguments) => new JsString(ValidatePlainYearMonth(thisObject).Calendar);
-    private JsNumber GetYear(JsValue thisObject, JsCallArguments arguments)
+    [JsAccessor("calendarId")]
+    private JsString GetCalendarId(JsValue thisObject) => new JsString(ValidatePlainYearMonth(thisObject).Calendar);
+    [JsAccessor("year")]
+    private JsNumber GetYear(JsValue thisObject)
     {
         var ym = ValidatePlainYearMonth(thisObject);
         return JsNumber.Create(TemporalHelpers.CalendarYear(ym.Calendar, ym.IsoDate, _engine));
     }
-    private JsNumber GetMonth(JsValue thisObject, JsCallArguments arguments)
+    [JsAccessor("month")]
+    private JsNumber GetMonth(JsValue thisObject)
     {
         var ym = ValidatePlainYearMonth(thisObject);
         return JsNumber.Create(TemporalHelpers.CalendarMonth(ym.Calendar, ym.IsoDate, _engine));
     }
-    private JsString GetMonthCode(JsValue thisObject, JsCallArguments arguments)
+    [JsAccessor("monthCode")]
+    private JsString GetMonthCode(JsValue thisObject)
     {
         var ym = ValidatePlainYearMonth(thisObject);
         return new JsString(TemporalHelpers.CalendarMonthCode(ym.Calendar, ym.IsoDate, _engine));
     }
-    private JsNumber GetDaysInMonth(JsValue thisObject, JsCallArguments arguments)
+    [JsAccessor("daysInMonth")]
+    private JsNumber GetDaysInMonth(JsValue thisObject)
     {
         var ym = ValidatePlainYearMonth(thisObject);
         return JsNumber.Create(TemporalHelpers.CalendarDaysInMonth(ym.Calendar, ym.IsoDate, _engine));
     }
-    private JsNumber GetDaysInYear(JsValue thisObject, JsCallArguments arguments)
+    [JsAccessor("daysInYear")]
+    private JsNumber GetDaysInYear(JsValue thisObject)
     {
         var ym = ValidatePlainYearMonth(thisObject);
         return JsNumber.Create(TemporalHelpers.CalendarDaysInYear(ym.Calendar, ym.IsoDate, _engine));
     }
-    private JsNumber GetMonthsInYear(JsValue thisObject, JsCallArguments arguments)
+    [JsAccessor("monthsInYear")]
+    private JsNumber GetMonthsInYear(JsValue thisObject)
     {
         var ym = ValidatePlainYearMonth(thisObject);
         return JsNumber.Create(TemporalHelpers.CalendarMonthsInYear(ym.Calendar, ym.IsoDate, _engine));
     }
-    private JsBoolean GetInLeapYear(JsValue thisObject, JsCallArguments arguments)
+    [JsAccessor("inLeapYear")]
+    private JsBoolean GetInLeapYear(JsValue thisObject)
     {
         var ym = ValidatePlainYearMonth(thisObject);
         return TemporalHelpers.CalendarInLeapYear(ym.Calendar, ym.IsoDate, _engine) ? JsBoolean.True : JsBoolean.False;
     }
-    private JsValue GetEraYear(JsValue thisObject, JsCallArguments arguments)
+    [JsAccessor("eraYear")]
+    private JsValue GetEraYear(JsValue thisObject)
     {
         var ym = ValidatePlainYearMonth(thisObject);
         var eraYear = TemporalHelpers.CalendarEraYear(ym.Calendar, ym.IsoDate);
         return eraYear.HasValue ? JsNumber.Create(eraYear.Value) : Undefined;
     }
-    private JsValue GetEra(JsValue thisObject, JsCallArguments arguments)
+    [JsAccessor("era")]
+    private JsValue GetEra(JsValue thisObject)
     {
         var ym = ValidatePlainYearMonth(thisObject);
         var era = TemporalHelpers.CalendarEra(ym.Calendar, ym.IsoDate);
@@ -123,12 +105,10 @@ internal sealed class PlainYearMonthPrototype : Prototype
     /// <summary>
     /// https://tc39.es/proposal-temporal/#sec-temporal.plainyearmonth.prototype.with
     /// </summary>
-    private JsPlainYearMonth With(JsValue thisObject, JsCallArguments arguments)
+    [JsFunction(Length = 1)]
+    private JsPlainYearMonth With(JsValue thisObject, JsValue temporalYearMonthLike, JsValue options)
     {
         var ym = ValidatePlainYearMonth(thisObject);
-        var temporalYearMonthLike = arguments.At(0);
-        var options = arguments.At(1);
-
         if (!temporalYearMonthLike.IsObject())
         {
             Throw.TypeError(_realm, "with argument must be an object");
@@ -346,11 +326,11 @@ internal sealed class PlainYearMonthPrototype : Prototype
     /// <summary>
     /// https://tc39.es/proposal-temporal/#sec-temporal.plainyearmonth.prototype.add
     /// </summary>
-    private JsPlainYearMonth Add(JsValue thisObject, JsCallArguments arguments)
+    [JsFunction(Length = 1)]
+    private JsPlainYearMonth Add(JsValue thisObject, JsValue temporalDurationLike, JsValue options)
     {
         var ym = ValidatePlainYearMonth(thisObject);
-        var duration = ToDurationRecord(arguments.At(0));
-        var options = arguments.At(1);
+        var duration = ToDurationRecord(temporalDurationLike);
         var overflow = TemporalHelpers.GetOverflowOption(_realm, options);
 
         return AddDurationToYearMonth(ym, duration, overflow);
@@ -359,11 +339,11 @@ internal sealed class PlainYearMonthPrototype : Prototype
     /// <summary>
     /// https://tc39.es/proposal-temporal/#sec-temporal.plainyearmonth.prototype.subtract
     /// </summary>
-    private JsPlainYearMonth Subtract(JsValue thisObject, JsCallArguments arguments)
+    [JsFunction(Length = 1)]
+    private JsPlainYearMonth Subtract(JsValue thisObject, JsValue temporalDurationLike, JsValue options)
     {
         var ym = ValidatePlainYearMonth(thisObject);
-        var duration = ToDurationRecord(arguments.At(0));
-        var options = arguments.At(1);
+        var duration = ToDurationRecord(temporalDurationLike);
         var overflow = TemporalHelpers.GetOverflowOption(_realm, options);
 
         // Negate the duration
@@ -407,18 +387,17 @@ internal sealed class PlainYearMonthPrototype : Prototype
     /// <summary>
     /// https://tc39.es/proposal-temporal/#sec-temporal.plainyearmonth.prototype.until
     /// </summary>
-    private JsDuration Until(JsValue thisObject, JsCallArguments arguments)
+    [JsFunction(Length = 1)]
+    private JsDuration Until(JsValue thisObject, JsValue other, JsValue options)
     {
         var ym = ValidatePlainYearMonth(thisObject);
-        var other = _constructor.ToTemporalYearMonth(arguments.At(0), "constrain");
+        var otherYm = _constructor.ToTemporalYearMonth(other, "constrain");
 
         // Calendar equality check (before reading options per spec)
-        if (!string.Equals(ym.Calendar, other.Calendar, StringComparison.Ordinal))
+        if (!string.Equals(ym.Calendar, otherYm.Calendar, StringComparison.Ordinal))
         {
             Throw.RangeError(_realm, "Calendars must match for year-month difference operations");
         }
-
-        var optionsArg = arguments.At(1);
 
         // Only year and month units allowed for PlainYearMonth
         var yearMonthUnits = new[] { "year", "month" };
@@ -429,7 +408,7 @@ internal sealed class PlainYearMonthPrototype : Prototype
 
         var settings = TemporalHelpers.GetDifferenceSettings(
             _realm,
-            optionsArg,
+            options,
             "until",
             fallbackSmallestUnit,
             fallbackLargestUnit,
@@ -442,24 +421,23 @@ internal sealed class PlainYearMonthPrototype : Prototype
             largestUnit = TemporalHelpers.LargerOfTwoTemporalUnits(settings.SmallestUnit, "year");
         }
 
-        return DifferenceYearMonth(ym, other, largestUnit, settings.SmallestUnit, settings.RoundingMode, settings.RoundingIncrement, negate: false);
+        return DifferenceYearMonth(ym, otherYm, largestUnit, settings.SmallestUnit, settings.RoundingMode, settings.RoundingIncrement, negate: false);
     }
 
     /// <summary>
     /// https://tc39.es/proposal-temporal/#sec-temporal.plainyearmonth.prototype.since
     /// </summary>
-    private JsDuration Since(JsValue thisObject, JsCallArguments arguments)
+    [JsFunction(Length = 1)]
+    private JsDuration Since(JsValue thisObject, JsValue other, JsValue options)
     {
         var ym = ValidatePlainYearMonth(thisObject);
-        var other = _constructor.ToTemporalYearMonth(arguments.At(0), "constrain");
+        var otherYm = _constructor.ToTemporalYearMonth(other, "constrain");
 
         // Calendar equality check (before reading options per spec)
-        if (!string.Equals(ym.Calendar, other.Calendar, StringComparison.Ordinal))
+        if (!string.Equals(ym.Calendar, otherYm.Calendar, StringComparison.Ordinal))
         {
             Throw.RangeError(_realm, "Calendars must match for year-month difference operations");
         }
-
-        var optionsArg = arguments.At(1);
 
         // Only year and month units allowed for PlainYearMonth
         var yearMonthUnits = new[] { "year", "month" };
@@ -471,7 +449,7 @@ internal sealed class PlainYearMonthPrototype : Prototype
 
         var settings = TemporalHelpers.GetDifferenceSettings(
             _realm,
-            optionsArg,
+            options,
             "since",
             fallbackSmallestUnit,
             fallbackLargestUnit,
@@ -484,7 +462,7 @@ internal sealed class PlainYearMonthPrototype : Prototype
             largestUnit = TemporalHelpers.LargerOfTwoTemporalUnits(settings.SmallestUnit, "year");
         }
 
-        return DifferenceYearMonth(ym, other, largestUnit, settings.SmallestUnit, settings.RoundingMode, settings.RoundingIncrement, negate: true);
+        return DifferenceYearMonth(ym, otherYm, largestUnit, settings.SmallestUnit, settings.RoundingMode, settings.RoundingIncrement, negate: true);
     }
 
     /// <summary>
@@ -581,15 +559,16 @@ internal sealed class PlainYearMonthPrototype : Prototype
     /// <summary>
     /// https://tc39.es/proposal-temporal/#sec-temporal.plainyearmonth.prototype.equals
     /// </summary>
-    private JsBoolean Equals(JsValue thisObject, JsCallArguments arguments)
+    [JsFunction(Length = 1)]
+    private JsBoolean Equals(JsValue thisObject, JsValue other)
     {
         var ym = ValidatePlainYearMonth(thisObject);
-        var other = _constructor.ToTemporalYearMonth(arguments.At(0), "constrain");
+        var otherYm = _constructor.ToTemporalYearMonth(other, "constrain");
 
-        return ym.IsoDate.Year == other.IsoDate.Year &&
-               ym.IsoDate.Month == other.IsoDate.Month &&
-               ym.IsoDate.Day == other.IsoDate.Day &&
-               string.Equals(ym.Calendar, other.Calendar, StringComparison.Ordinal)
+        return ym.IsoDate.Year == otherYm.IsoDate.Year &&
+               ym.IsoDate.Month == otherYm.IsoDate.Month &&
+               ym.IsoDate.Day == otherYm.IsoDate.Day &&
+               string.Equals(ym.Calendar, otherYm.Calendar, StringComparison.Ordinal)
             ? JsBoolean.True
             : JsBoolean.False;
     }
@@ -597,10 +576,10 @@ internal sealed class PlainYearMonthPrototype : Prototype
     /// <summary>
     /// https://tc39.es/proposal-temporal/#sec-temporal.plainyearmonth.prototype.tostring
     /// </summary>
-    private JsString ToTemporalString(JsValue thisObject, JsCallArguments arguments)
+    [JsFunction(Length = 0, Name = "toString")]
+    private JsString ToTemporalString(JsValue thisObject, JsValue optionsValue)
     {
         var ym = ValidatePlainYearMonth(thisObject);
-        var optionsValue = arguments.At(0);
         var options = TemporalHelpers.GetOptionsObject(_realm, optionsValue);
         var showCalendar = GetCalendarNameOption(options);
 
@@ -642,7 +621,8 @@ internal sealed class PlainYearMonthPrototype : Prototype
     /// <summary>
     /// https://tc39.es/proposal-temporal/#sec-temporal.plainyearmonth.prototype.tojson
     /// </summary>
-    private JsString ToJSON(JsValue thisObject, JsCallArguments arguments)
+    [JsFunction(Length = 0)]
+    private JsString ToJSON(JsValue thisObject)
     {
         var ym = ValidatePlainYearMonth(thisObject);
         var yearStr = TemporalHelpers.PadIsoYear(ym.IsoDate.Year);
@@ -658,12 +638,10 @@ internal sealed class PlainYearMonthPrototype : Prototype
     /// <summary>
     /// https://tc39.es/proposal-temporal/#sup-temporal.plainyearmonth.prototype.tolocalestring
     /// </summary>
-    private JsValue ToLocaleString(JsValue thisObject, JsCallArguments arguments)
+    [JsFunction(Length = 0)]
+    private JsValue ToLocaleString(JsValue thisObject, JsValue locales, JsValue options)
     {
         var ym = ValidatePlainYearMonth(thisObject);
-        var locales = arguments.At(0);
-        var options = arguments.At(1);
-
         // Per spec: CreateDateTimeFormat with required=~date~, defaults=~date~
         // But for PlainYearMonth, we use year-month specific defaults (no day)
         var dtf = _realm.Intrinsics.DateTimeFormat.CreateDateTimeFormat(
@@ -682,7 +660,8 @@ internal sealed class PlainYearMonthPrototype : Prototype
     /// <summary>
     /// https://tc39.es/proposal-temporal/#sec-temporal.plainyearmonth.prototype.valueof
     /// </summary>
-    private JsValue ValueOf(JsValue thisObject, JsCallArguments arguments)
+    [JsFunction(Length = 0)]
+    private JsValue ValueOf(JsValue thisObject)
     {
         Throw.TypeError(_realm, "Temporal.PlainYearMonth cannot be converted to a primitive value");
         return Undefined;
@@ -691,11 +670,10 @@ internal sealed class PlainYearMonthPrototype : Prototype
     /// <summary>
     /// https://tc39.es/proposal-temporal/#sec-temporal.plainyearmonth.prototype.toplaindate
     /// </summary>
-    private JsPlainDate ToPlainDate(JsValue thisObject, JsCallArguments arguments)
+    [JsFunction(Length = 1)]
+    private JsPlainDate ToPlainDate(JsValue thisObject, JsValue item)
     {
         var ym = ValidatePlainYearMonth(thisObject);
-        var item = arguments.At(0);
-
         if (!item.IsObject())
         {
             Throw.TypeError(_realm, "toPlainDate requires an object argument");

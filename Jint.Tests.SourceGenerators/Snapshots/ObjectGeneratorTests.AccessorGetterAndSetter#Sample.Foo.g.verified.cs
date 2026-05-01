@@ -10,7 +10,7 @@ internal sealed partial class Foo
     private void CreateProperties_Generated()
     {
         var properties = new global::Jint.Collections.HybridDictionary<global::Jint.Runtime.Descriptors.PropertyDescriptor>(1, checkExistingKeys: false);
-        properties["__proto__"] = new global::Jint.Runtime.Descriptors.GetSetPropertyDescriptor(new __FooFunction(this, __FooFunction.Slot.ProtoGet), new __FooFunction(this, __FooFunction.Slot.ProtoSet), global::Jint.Runtime.Descriptors.PropertyFlag.EnumerableSet | global::Jint.Runtime.Descriptors.PropertyFlag.Configurable);
+        properties["__proto__"] = new global::Jint.Runtime.Descriptors.Specialized.LazyGetSetPropertyDescriptor<Foo>(this, static host => new __FooFunction(host, __FooFunction.Slot.ProtoGet), static host => new __FooFunction(host, __FooFunction.Slot.ProtoSet), global::Jint.Runtime.Descriptors.PropertyFlag.EnumerableSet | global::Jint.Runtime.Descriptors.PropertyFlag.Configurable);
         SetProperties(properties);
     }
 
@@ -26,11 +26,11 @@ internal sealed partial class Foo
         private readonly Slot _slot;
 
         internal __FooFunction(Foo host, Slot slot)
-            : base(host.Engine, host.Engine.Realm, GetName(slot))
+            : base(host.Engine, host._realm, GetName(slot))
         {
             _host = host;
             _slot = slot;
-            _prototype = host.Engine.Realm.Intrinsics.Function.PrototypeObject;
+            _prototype = host._realm.Intrinsics.Function.PrototypeObject;
             _length = new global::Jint.Runtime.Descriptors.PropertyDescriptor(global::Jint.Native.JsNumber.Create(GetLength(slot)), global::Jint.Runtime.Descriptors.PropertyFlag.Configurable);
         }
 

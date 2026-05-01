@@ -9,7 +9,8 @@ namespace Jint.Native.Temporal;
 /// <summary>
 /// https://tc39.es/proposal-temporal/#sec-temporal.plaindatetime
 /// </summary>
-internal sealed class PlainDateTimeConstructor : Constructor
+[JsObject]
+internal sealed partial class PlainDateTimeConstructor : Constructor
 {
     private static readonly JsString _functionName = new("PlainDateTime");
 
@@ -27,27 +28,15 @@ internal sealed class PlainDateTimeConstructor : Constructor
 
     public PlainDateTimePrototype PrototypeObject { get; }
 
-    protected override void Initialize()
-    {
-        const PropertyFlag PropertyFlags = PropertyFlag.Writable | PropertyFlag.Configurable;
-        const PropertyFlag LengthFlags = PropertyFlag.Configurable;
+    protected override void Initialize() => CreateProperties_Generated();
 
-        var properties = new PropertyDictionary(2, checkExistingKeys: false)
-        {
-            ["from"] = new(new ClrFunction(Engine, "from", From, 1, LengthFlags), PropertyFlags),
-            ["compare"] = new(new ClrFunction(Engine, "compare", Compare, 2, LengthFlags), PropertyFlags),
-        };
-        SetProperties(properties);
-    }
 
     /// <summary>
     /// https://tc39.es/proposal-temporal/#sec-temporal.plaindatetime.from
     /// </summary>
-    private JsPlainDateTime From(JsValue thisObject, JsCallArguments arguments)
+    [JsFunction(Length = 1)]
+    private JsPlainDateTime From(JsValue thisObject, JsValue item, JsValue optionsValue)
     {
-        var item = arguments.At(0);
-        var optionsValue = arguments.At(1);
-
         // For existing Temporal types (cloning), validate options first then convert
         if (item is JsPlainDateTime || item is JsPlainDate || item is JsZonedDateTime)
         {
@@ -88,11 +77,12 @@ internal sealed class PlainDateTimeConstructor : Constructor
     /// <summary>
     /// https://tc39.es/proposal-temporal/#sec-temporal.plaindatetime.compare
     /// </summary>
-    private JsNumber Compare(JsValue thisObject, JsCallArguments arguments)
+    [JsFunction(Length = 2)]
+    private JsNumber Compare(JsValue thisObject, JsValue one, JsValue two)
     {
-        var one = ToTemporalDateTime(arguments.At(0), "constrain");
-        var two = ToTemporalDateTime(arguments.At(1), "constrain");
-        return JsNumber.Create(TemporalHelpers.CompareIsoDateTimes(one.IsoDateTime, two.IsoDateTime));
+        return JsNumber.Create(TemporalHelpers.CompareIsoDateTimes(
+            ToTemporalDateTime(one, "constrain").IsoDateTime,
+            ToTemporalDateTime(two, "constrain").IsoDateTime));
     }
 
     protected internal override JsValue Call(JsValue thisObject, JsCallArguments arguments)
