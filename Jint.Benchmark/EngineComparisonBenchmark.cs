@@ -1,6 +1,7 @@
-﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Order;
+using Okojo.Runtime;
 
 namespace Jint.Benchmark;
 
@@ -102,5 +103,13 @@ public class EngineComparisonBenchmark
         // we need to pass `this` explicitly in global context
         // if script is expecting global context as `this`
         engine.Eval(_files[FileName], null, engine);
+    }
+
+    [Benchmark]
+    public void Okojo()
+    {
+        var engine = JsRuntime.Create();
+        var realm = engine.MainRealm;
+        realm.Execute(_files[FileName]);
     }
 }
