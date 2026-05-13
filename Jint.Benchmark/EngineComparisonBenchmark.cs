@@ -82,13 +82,6 @@ public class EngineComparisonBenchmark
     }
 
     [Benchmark]
-    public void Jurassic()
-    {
-        var engine = new Jurassic.ScriptEngine { ForceStrictMode = true };
-        engine.Execute(_files[FileName]);
-    }
-
-    [Benchmark]
     public void NilJS()
     {
         var engine = new NiL.JS.Core.Context(strict: true);
