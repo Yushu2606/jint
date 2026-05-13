@@ -1,6 +1,9 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Order;
+using Okojo.Bytecode;
+using Okojo.Compiler;
+using Okojo.Parsing;
 using Okojo.Runtime;
 
 namespace Jint.Benchmark;
@@ -14,6 +17,7 @@ namespace Jint.Benchmark;
 public class EngineComparisonBenchmark
 {
     private static readonly Dictionary<string, Prepared<Script>> _parsedScripts = new();
+    private static readonly Dictionary<string, (JsRuntime, JsScript)> _compiledScripts = new();
 
     private static readonly Dictionary<string, string> _files = new()
     {
@@ -56,6 +60,11 @@ public class EngineComparisonBenchmark
             }
             _files[fileName] = script;
             _parsedScripts[fileName] = Engine.PrepareScript(script, strict: true);
+            var program = JavaScriptParser.ParseScript(script);
+            var engine = JsRuntime.Create();
+            var realm = engine.MainRealm;
+            var okojoScript = JsCompiler.Compile(realm, program);
+            _compiledScripts[fileName] = (engine, okojoScript);
         }
     }
 
@@ -82,10 +91,17 @@ public class EngineComparisonBenchmark
     }
 
     [Benchmark]
-    public void NilJS()
+    public void NiLJS()
     {
         var engine = new NiL.JS.Core.Context(strict: true);
         engine.Eval(_files[FileName]);
+    }
+
+    [Benchmark]
+    public void NiLJS_Model()
+    {
+        var engine = new NiL.JS.Module(_files[FileName]);
+        engine.Run();
     }
 
     [Benchmark]
@@ -104,5 +120,13 @@ public class EngineComparisonBenchmark
         var engine = JsRuntime.Create();
         var realm = engine.MainRealm;
         realm.Execute(_files[FileName]);
+    }
+
+    [Benchmark]
+    public void Okojo_CompiledScript()
+    {
+        var (engine, script) = _compiledScripts[FileName];
+        var realm = engine.MainRealm;
+        realm.Execute(script);
     }
 }
