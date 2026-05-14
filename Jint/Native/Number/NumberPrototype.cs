@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Numerics;
 using System.Text;
 using Jint.Native.Number.Dtoa;
 using Jint.Native.Object;
@@ -446,13 +447,27 @@ internal sealed partial class NumberPrototype : NumberInstance
             return ToNumberString(x);
         }
 
-        var integer = (long) x;
-        var fraction = x - integer;
+        var truncated = System.Math.Truncate(x);
+        var fraction = x - truncated;
 
-        string result = NumberPrototype.ToBase(integer, radix);
+        string result;
+        // (double) long.MaxValue rounds up to 2^63, so the comparison must be strict
+        // against 2^63 (the smallest double above long.MaxValue) to keep the cast safe.
+        if (truncated < 9223372036854775808.0)
+        {
+            result = ToBase((long) truncated, radix);
+        }
+        else
+        {
+            // For values that don't fit in long, use BigInteger to preserve the exact
+            // integer represented by the double. Doubles above 2^53 have no fractional
+            // part, but the integer can be up to ~2^1024.
+            result = ToBase(new BigInteger(truncated), radix);
+        }
+
         if (fraction != 0)
         {
-            result += "." + NumberPrototype.ToFractionBase(fraction, radix);
+            result += "." + ToFractionBase(fraction, radix);
         }
 
         return result;
@@ -485,6 +500,26 @@ internal sealed partial class NumberPrototype : NumberInstance
             var digit = (int) (n % radix);
             n /= radix;
             sb.Append(Digits[digit]);
+        }
+        sb.Reverse();
+        return sb.ToString();
+    }
+
+    internal static string ToBase(BigInteger n, int radix)
+    {
+        if (n.IsZero)
+        {
+            return "0";
+        }
+
+        const string Digits = "0123456789abcdefghijklmnopqrstuvwxyz";
+        // Doubles can represent integers up to ~2^1024, which is ~1024 binary digits.
+        var sb = new ValueStringBuilder(stackalloc char[1100]);
+        var radixBig = new BigInteger(radix);
+        while (n > 0)
+        {
+            n = BigInteger.DivRem(n, radixBig, out var remainder);
+            sb.Append(Digits[(int) remainder]);
         }
         sb.Reverse();
         return sb.ToString();
